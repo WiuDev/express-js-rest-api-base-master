@@ -1,5 +1,5 @@
-var knex = require("../database/connection");
-var bcrypt = require("bcrypt");
+let knex = require("../database/connection");
+let bcrypt = require("bcrypt");
 
 class User {
   async findAll() {
@@ -18,6 +18,22 @@ class User {
         .table("users");
       if (user.length > 0) {
         return user[0];
+      } else {
+        return undefined;
+      }
+    } catch (err) {
+      console.error(err);
+      return undefined;
+    }
+  }
+  async findByEmail(email) {
+    try {
+      let result = await knex
+        .select(["id", "name", "email","email" ,"role"])
+        .where({ email: email })
+        .table("users");
+      if (result.length > 0) {
+        return result[0];
       } else {
         return undefined;
       }
@@ -72,10 +88,10 @@ class User {
           editUser.role = role;
         }
         try {
-          await knex("users").where({ id: id }).update(editUser);
+          await knex.update(editUser).where({ id: id }).table("users");
           return { status: true };
         } catch (err) {
-          console.error(err);
+          return { status: false, err: err };
         }
       } else {
         return { status: false, err: "The user does not exist!" };
@@ -90,12 +106,19 @@ class User {
         await knex.delete().where({ id: id }).table("users");
         return { status: true };
       } catch (err) {
-        console.error(err);
-        return { status: false };
+        return { status: false, err: err };
       }
     } else {
       return { status: false, err: "The user does not exist!" };
     }
+  }
+  async changePassword(newPassword, id, token) {
+    let hash = await bcrypt.hash(newPassword, 10);
+    await knex
+      .update({ password: hash })
+      .where({ id: id })
+      .table("users");
+    await knex.update({ used: 1 }).where({ token: token }).table("passwordtokens");
   }
 
 }
